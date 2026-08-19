@@ -1,0 +1,16 @@
+[project]
+name = "literag"
+version = "0.1.0"
+description = "RAG (retrieval-only) with LangChain, VoyageAI embeddings, and Neo4j vector store, exposed via FastAPI"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "python-multipart>=0.0.9",
+    "langchain-core>=0.3.0",
+    "langchain-voyageai>=0.2.0",
+    "langchain-neo4j>=0.3.0",
+    "langchain-text-splitters>=0.3.0",
+    "pydantic-settings>=2.4.0",
+]
