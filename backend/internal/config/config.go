@@ -1,24 +1,30 @@
 package config
 
-import "os"
+import (
+	"os"
+
+	"github.com/joho/godotenv"
+)
 
 type Config struct {
-	Port           string
-	RAGURL         string
-	DeepSeekURL    string
-	DeepSeekAPIKey string
-	DeepSeekModel  string
-	DatabaseURL    string
+	Port             string
+	RAGURL           string
+	OpenRouterURL    string
+	OpenRouterAPIKey string
+	OpenRouterModel  string
+	DatabaseURL      string
 }
 
 func Load() Config {
+	_ = godotenv.Load()
+
 	return Config{
-		Port:           getenv("PORT", "8080"),
-		RAGURL:         getenv("RAG_URL", "http://localhost:8000"),
-		DeepSeekURL:    getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
-		DeepSeekAPIKey: os.Getenv("DEEPSEEK_API_KEY"),
-		DeepSeekModel:  getenv("DEEPSEEK_MODEL", "deepseek-chat"),
-		DatabaseURL:    getenv("DATABASE_URL", ""),
+		Port:             getenv("PORT", "8080"),
+		RAGURL:           getenv("RAG_URL", "http://localhost:8000"),
+		OpenRouterURL:    getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+		OpenRouterAPIKey: os.Getenv("OPENROUTER_API_KEY"),
+		OpenRouterModel:  getenv("OPENROUTER_MODEL", "deepseek/deepseek-v4-flash-latest"),
+		DatabaseURL:      getenv("DATABASE_URL", ""),
 	}
 }
 

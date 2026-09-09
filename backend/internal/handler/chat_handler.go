@@ -1,15 +1,23 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"literag-backend/internal/entity"
 	"literag-backend/internal/middleware"
 	"literag-backend/internal/usecase"
+
+	"github.com/gin-gonic/gin"
 )
+
+type sourcesEvent struct {
+	Type    string          `json:"type"`
+	Sources []entity.Source `json:"sources"`
+}
 
 type ChatHandler struct {
 	usecase *usecase.ChatUsecase
@@ -52,7 +60,7 @@ func (h *ChatHandler) Completion(c *gin.Context) {
 	c.Header("X-Accel-Buffering", "no")
 	c.Status(http.StatusOK)
 
-	buf := make([]byte, 32*1024)
+	buf := make([]byte, 4096) // 4KB
 	flusher := c.Writer.(http.Flusher)
 	for {
 		n, err := body.Read(buf)
@@ -68,5 +76,23 @@ func (h *ChatHandler) Completion(c *gin.Context) {
 			}
 			break
 		}
+	}
+
+	writeSources(c.Writer, flusher, query)
+}
+
+func writeSources(w io.Writer, flusher http.Flusher, query *entity.QueryResponse) {
+	if query == nil || len(query.Sources) == 0 {
+		return
+	}
+
+	payload := sourcesEvent{Type: "sources", Sources: query.Sources}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+
+	if _, werr := fmt.Fprintf(w, "data: %s\n\n", data); werr == nil {
+		flusher.Flush()
 	}
 }

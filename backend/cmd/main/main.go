@@ -28,7 +28,7 @@ func main() {
 	}
 
 	ragClient := rag.NewClient(cfg.RAGURL)
-	llmClient := llm.NewClient(cfg.DeepSeekURL, cfg.DeepSeekAPIKey, cfg.DeepSeekModel)
+	llmClient := llm.NewClient(cfg.OpenRouterURL, cfg.OpenRouterAPIKey, cfg.OpenRouterModel)
 	chatUsecase := usecase.NewChatUsecase(ragClient, llmClient, chatRepo)
 	chatHandler := handler.NewChatHandler(chatUsecase)
 

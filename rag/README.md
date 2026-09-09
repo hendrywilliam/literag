@@ -6,15 +6,20 @@ vector store, exposed via FastAPI.
 ## Stack
 
 - **FastAPI** — HTTP API
-- **LangChain** — orchestration
+- **LangChain** — orchestration + relation-building agent
 - **VoyageAI** — embeddings
-- **Neo4j** — vector store (5.11+)
+- **DeepSeek** — LLM for entity extraction & chunk relations (OpenAI-compatible)
+- **Neo4j** — vector store + knowledge graph (5.11+)
+- **Celery + Redis** — background relation building
 
 ## Prerequisites
 
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
 - [Docker](https://www.docker.com/) + Docker Compose (for Neo4j)
 - A [VoyageAI](https://www.voyageai.com/) API key
+- A [DeepSeek](https://platform.deepseek.com/) API key
+- Redis (Celery broker/backend)
+- Neo4j with the **APOC** plugin (required for the knowledge-graph import)
 
 ## Setup
 
@@ -28,7 +33,8 @@ vector store, exposed via FastAPI.
 
    ```bash
    cp .env.example .env
-   # then edit .env and fill in VOYAGE_API_KEY and Neo4j credentials
+   # then edit .env and fill in VOYAGE_API_KEY, DEEPSEEK_API_KEY,
+   # REDIS_URL, and Neo4j credentials
    ```
 
 3. Start Neo4j (local Docker), or use Neo4j AuraDB (cloud).
@@ -74,6 +80,16 @@ vector store, exposed via FastAPI.
    The API will be available at http://localhost:8000 and interactive docs at
    http://localhost:8000/docs.
 
+5. Run the relation-building worker (requires Redis + APOC-enabled Neo4j):
+
+   ```bash
+   uv run celery -A app.core.celery_app worker --loglevel=info
+   ```
+
+   After uploading a document, a background task extracts entities and builds
+   chunk-to-chunk relations. Progress is tracked via the document `status`
+   field (`indexed` → `building` → `done` / `failed`).
+
 ## Useful commands
 
 - Stop Neo4j:
@@ -103,9 +119,13 @@ vector store, exposed via FastAPI.
 | POST   | `/documents/upload`                     | Upload a `.txt` file                       |
 | POST   | `/query`                                | Retrieve relevant chunks (no LLM)          |
 | GET    | `/documents`                            | List documents                             |
-| GET    | `/documents/{document_id}`              | Document detail                            |
+| GET    | `/documents/{document_id}`              | Document detail (incl. relation status)    |
 | GET    | `/documents/{document_id}/chunks`       | All chunks of a document                   |
 | GET    | `/documents/{document_id}/chunks/{id}`  | A single chunk of a document               |
+| GET    | `/documents/{document_id}/relations`    | Chunk-to-chunk relations                   |
+| POST   | `/documents/{document_id}/relations`    | Rebuild relations (Celery task)            |
+| GET    | `/documents/{document_id}/entities`     | Extracted entities (knowledge graph)       |
+| GET    | `/documents/{document_id}/entity-relations` | Entity-to-entity relations             |
 | GET    | `/healthz`                              | Health check                               |
 
 ### Examples

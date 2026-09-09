@@ -9,7 +9,13 @@ class Settings(BaseSettings):
     )
 
     voyage_api_key: str = ""
-    voyage_model: str = "voyage-3-lite"
+    voyage_model: str = "voyage-4"
+
+    deepseek_api_key: str = ""
+    deepseek_model: str = "deepseek-chat"
+    deepseek_base_url: str = "https://api.deepseek.com"
+
+    redis_url: str = "redis://localhost:6379/0"
 
     neo4j_uri: str = "bolt://localhost:7687"
     neo4j_username: str = "neo4j"
@@ -20,6 +26,9 @@ class Settings(BaseSettings):
     chunk_size: int = 1000
     chunk_overlap: int = 200
     default_top_k: int = 4
+
+    relation_enabled: bool = True
+    relation_candidates: int = 5
 
 
 @lru_cache

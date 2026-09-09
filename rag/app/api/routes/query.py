@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.models.schemas import QueryRequest, QueryResponse
-from app.services.retrieval_service import RetrievalService
+from app.services.retrieval import RetrievalService
 
 router = APIRouter(tags=["query"])
 

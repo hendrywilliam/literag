@@ -1,0 +1,193 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Literag Backend API",
+    "version": "1.0.0",
+    "description": "RAG chat backend. Queries the Python RAG service for context, streams a completion from the LLM provider (OpenRouter), and returns the retrieval sources."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local development"
+    }
+  ],
+  "paths": {
+    "/chat/completion": {
+      "post": {
+        "summary": "Stream a chat completion with RAG context",
+        "description": "Retrieves relevant context from the RAG service, injects it into the prompt, and streams the LLM answer as Server-Sent Events. The stream ends with a `sources` event containing the retrieved sources.",
+        "operationId": "chatCompletion",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Server-Sent Events stream. Each `data:` line is a JSON payload: an OpenAI-compatible `choices[].delta.content` token chunk, a final `[DONE]` marker, and a trailing `sources` event with the retrieved context.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatStreamEvent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or missing question",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "RAG retrieval or LLM completion failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "summary": "This OpenAPI document",
+        "operationId": "getOpenApi",
+        "responses": {
+          "200": {
+            "description": "OpenAPI 3.0 document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ChatRequest": {
+        "type": "object",
+        "required": ["question"],
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "The user's question."
+          },
+          "top_k": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Number of context chunks to retrieve from the RAG service. Defaults to the RAG service's configured value when omitted."
+          }
+        }
+      },
+      "Source": {
+        "type": "object",
+        "properties": {
+          "chunk_id": {
+            "type": "string"
+          },
+          "document_id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "QueryResponse": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            }
+          }
+        }
+      },
+      "ChatStreamEvent": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/DeltaChunk"
+          },
+          {
+            "$ref": "#/components/schemas/SourcesEvent"
+          }
+        ]
+      },
+      "DeltaChunk": {
+        "type": "object",
+        "description": "OpenAI-compatible completion token chunk.",
+        "properties": {
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "delta": {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "SourcesEvent": {
+        "type": "object",
+        "description": "Trailing event carrying the retrieved RAG sources.",
+        "required": ["type", "sources"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["sources"]
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
