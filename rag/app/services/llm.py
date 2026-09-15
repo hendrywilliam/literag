@@ -9,15 +9,15 @@ def get_llm() -> ChatOpenAI:
     global _llm
     if _llm is None:
         settings = get_settings()
-        if not settings.deepseek_api_key:
+        if not settings.llm_api_key:
             raise RuntimeError(
-                "DEEPSEEK_API_KEY is not set. Add it to .env to enable the "
-                "relation-building agent."
+                "LLM_API_KEY is not set. Add it to .env to enable the "
+                "relation-building agent and chains (e.g. QuestionToCypher)."
             )
         _llm = ChatOpenAI(
-            model=settings.deepseek_model,
-            api_key=settings.deepseek_api_key,
-            base_url=settings.deepseek_base_url,
+            model=settings.llm_model,
+            api_key=settings.llm_api_key,
+            base_url=settings.llm_base_url,
             temperature=0,
         )
     return _llm

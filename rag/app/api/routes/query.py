@@ -1,11 +1,12 @@
 from fastapi import APIRouter
 
+from app.chains.vector_retrieval import get_vector_retrieval
 from app.models.schemas import QueryRequest, QueryResponse
-from app.services.retrieval import RetrievalService
 
 router = APIRouter(tags=["query"])
 
 
 @router.post("/query", response_model=QueryResponse)
 async def query(request: QueryRequest) -> QueryResponse:
-    return RetrievalService().search(request.question, request.top_k)
+    sources = get_vector_retrieval().run(request.question, top_k=request.top_k)
+    return QueryResponse(question=request.question, sources=sources)

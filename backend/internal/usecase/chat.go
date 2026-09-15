@@ -38,7 +38,7 @@ func (u *ChatUsecase) Complete(ctx context.Context, req entity.ChatRequest) (io.
 	return body, query, nil
 }
 
-const systemPrompt = "You are a helpful assistant. Answer the user's question using the provided context."
+const systemPrompt = "You are a helpful assistant. Answer the user's question using the provided context. Do not make up answers or guesses. Dont mention context, just answer naturally."
 
 func buildUserMessage(question string, query *entity.QueryResponse) string {
 	if len(query.Sources) == 0 {
@@ -46,10 +46,12 @@ func buildUserMessage(question string, query *entity.QueryResponse) string {
 	}
 
 	var sb strings.Builder
+	sb.WriteString("Use the following documents to answer the question that will follow: \n")
 	sb.WriteString("Context:\n")
 	for i, s := range query.Sources {
 		sb.WriteString(fmt.Sprintf("[%d] (%s) %s\n", i+1, s.Source, s.Text))
 	}
+	sb.WriteString("\n\n---\n\n")
 	sb.WriteString("\nQuestion: ")
 	sb.WriteString(question)
 

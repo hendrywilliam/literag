@@ -4,7 +4,6 @@ from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.core.config import get_settings
-from app.models.schemas import Chunk, DocumentDetail, DocumentSummary
 from app.services.graph_store import get_graph_store
 from app.services.vector_store import get_vector_store
 
@@ -36,23 +35,23 @@ class DocumentService:
 
         return document_id, len(chunks)
 
-    def list_documents(self) -> list[DocumentSummary]:
-        return self._graph_store.list_documents()
+    def list_documents(self) -> list[dict]:
+        return [d.model_dump() for d in self._graph_store.list_documents()]
 
-    def get_document(self, document_id: str) -> DocumentDetail:
-        return self._graph_store.get_document(document_id)
+    def get_document(self, document_id: str) -> dict:
+        return self._graph_store.get_document(document_id).model_dump()
 
-    def list_chunks(self, document_id: str) -> list[Chunk]:
-        return self._graph_store.list_chunks(document_id)
+    def list_chunks(self, document_id: str) -> list[dict]:
+        return [c.model_dump() for c in self._graph_store.list_chunks(document_id)]
 
-    def get_chunk(self, document_id: str, chunk_id: str) -> Chunk:
-        return self._graph_store.get_chunk(document_id, chunk_id)
+    def get_chunk(self, document_id: str, chunk_id: str) -> dict:
+        return self._graph_store.get_chunk(document_id, chunk_id).model_dump()
 
-    def list_chunk_relations(self, document_id: str):
-        return self._graph_store.list_chunk_relations(document_id)
+    def list_chunk_relations(self, document_id: str) -> list[dict]:
+        return [r.model_dump() for r in self._graph_store.list_chunk_relations(document_id)]
 
-    def list_entities(self, document_id: str):
-        return self._graph_store.list_entities(document_id)
+    def list_entities(self, document_id: str) -> list[dict]:
+        return [e.model_dump() for e in self._graph_store.list_entities(document_id)]
 
-    def list_entity_relations(self, document_id: str):
-        return self._graph_store.list_entity_relations(document_id)
+    def list_entity_relations(self, document_id: str) -> list[dict]:
+        return [r.model_dump() for r in self._graph_store.list_entity_relations(document_id)]

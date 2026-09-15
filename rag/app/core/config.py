@@ -10,10 +10,13 @@ class Settings(BaseSettings):
 
     voyage_api_key: str = ""
     voyage_model: str = "voyage-4"
+    rerank_model: str = "rerank-2"
+    rerank_enabled: bool = True
+    rerank_fetch_k: int = 20
 
-    deepseek_api_key: str = ""
-    deepseek_model: str = "deepseek-chat"
-    deepseek_base_url: str = "https://api.deepseek.com"
+    llm_api_key: str = ""
+    llm_model: str = "deepseek-chat"
+    llm_base_url: str = "https://api.deepseek.com"
 
     redis_url: str = "redis://localhost:6379/0"
 

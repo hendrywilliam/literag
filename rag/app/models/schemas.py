@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class DocumentSummary(BaseModel):
@@ -57,8 +57,16 @@ class RelationsBuildResponse(BaseModel):
 
 
 class QueryRequest(BaseModel):
-    question: str
+    question: str = Field(max_length=2000)
     top_k: int | None = Field(default=None, ge=1, le=100)
+
+    @field_validator("question")
+    @classmethod
+    def _question_not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("question must not be empty")
+        return value
 
 
 class QuerySource(BaseModel):

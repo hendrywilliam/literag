@@ -8,7 +8,7 @@ vector store, exposed via FastAPI.
 - **FastAPI** — HTTP API
 - **LangChain** — orchestration + relation-building agent
 - **VoyageAI** — embeddings
-- **DeepSeek** — LLM for entity extraction & chunk relations (OpenAI-compatible)
+- **LLM (OpenAI-compatible)** — entity extraction, chunk relations & QuestionToCypher (DeepSeek / OpenRouter)
 - **Neo4j** — vector store + knowledge graph (5.11+)
 - **Celery + Redis** — background relation building
 
@@ -17,7 +17,7 @@ vector store, exposed via FastAPI.
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
 - [Docker](https://www.docker.com/) + Docker Compose (for Neo4j)
 - A [VoyageAI](https://www.voyageai.com/) API key
-- A [DeepSeek](https://platform.deepseek.com/) API key
+- A [DeepSeek](https://platform.deepseek.com/) or [OpenRouter](https://openrouter.ai/) API key
 - Redis (Celery broker/backend)
 - Neo4j with the **APOC** plugin (required for the knowledge-graph import)
 
@@ -33,7 +33,7 @@ vector store, exposed via FastAPI.
 
    ```bash
    cp .env.example .env
-   # then edit .env and fill in VOYAGE_API_KEY, DEEPSEEK_API_KEY,
+   # then edit .env and fill in VOYAGE_API_KEY, LLM_API_KEY,
    # REDIS_URL, and Neo4j credentials
    ```
 

@@ -91,46 +91,53 @@ async def upload_document(file: UploadFile = File(...)) -> UploadResponse:
 
 @router.get("", response_model=list[DocumentSummary])
 async def list_documents() -> list[DocumentSummary]:
-    return DocumentService().list_documents()
+    documents = DocumentService().list_documents()
+    return [DocumentSummary(**doc) for doc in documents]
 
 
 @router.get("/{document_id}", response_model=DocumentDetail)
 async def get_document(document_id: str) -> DocumentDetail:
     try:
-        return DocumentService().get_document(document_id)
+        doc = DocumentService().get_document(document_id)
     except DocumentNotFoundError:
         raise HTTPException(status_code=404, detail="Document not found")
+    return DocumentDetail(**doc)
 
 
 @router.get("/{document_id}/chunks", response_model=list[Chunk])
 async def list_chunks(document_id: str) -> list[Chunk]:
     try:
-        return DocumentService().list_chunks(document_id)
+        chunks = DocumentService().list_chunks(document_id)
     except DocumentNotFoundError:
         raise HTTPException(status_code=404, detail="Document not found")
+    return [Chunk(**chunk) for chunk in chunks]
 
 
 @router.get("/{document_id}/chunks/{chunk_id}", response_model=Chunk)
 async def get_chunk(document_id: str, chunk_id: str) -> Chunk:
     try:
-        return DocumentService().get_chunk(document_id, chunk_id)
+        chunk = DocumentService().get_chunk(document_id, chunk_id)
     except ChunkNotFoundError:
         raise HTTPException(status_code=404, detail="Chunk not found")
+    return Chunk(**chunk)
 
 
 @router.get("/{document_id}/relations", response_model=list[Relation])
 async def list_chunk_relations(document_id: str) -> list[Relation]:
-    return DocumentService().list_chunk_relations(document_id)
+    relations = DocumentService().list_chunk_relations(document_id)
+    return [Relation(**relation) for relation in relations]
 
 
 @router.get("/{document_id}/entities", response_model=list[Entity])
 async def list_entities(document_id: str) -> list[Entity]:
-    return DocumentService().list_entities(document_id)
+    entities = DocumentService().list_entities(document_id)
+    return [Entity(**entity) for entity in entities]
 
 
 @router.get("/{document_id}/entity-relations", response_model=list[EntityRelation])
 async def list_entity_relations(document_id: str) -> list[EntityRelation]:
-    return DocumentService().list_entity_relations(document_id)
+    relations = DocumentService().list_entity_relations(document_id)
+    return [EntityRelation(**relation) for relation in relations]
 
 
 @router.post("/{document_id}/relations", response_model=RelationsBuildResponse)
