@@ -6,8 +6,9 @@ from langchain_neo4j import LLMGraphTransformer
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
+from app.services.graph_store import get_graph_store, sanitize_label
 from app.services.llm import get_llm
-from app.services.neo4j_store import get_neo4j_vector_store, sanitize_label
+from app.services.vector_store import get_vector_store
 
 RELATION_TYPES = ["CONTINUES", "ELABORATES", "CONTRASTS", "REFERENCES", "SUPPORTS"]
 
@@ -41,7 +42,8 @@ def _sanitize_value(value: Any) -> Any:
 class RelationAgent:
     def __init__(self) -> None:
         self._settings = get_settings()
-        self._store = get_neo4j_vector_store()
+        self._graph_store = get_graph_store()
+        self._vector_store = get_vector_store()
         self._llm = get_llm()
 
     def _chunks_to_documents(self, chunks: list[Any]) -> list[Document]:
@@ -126,19 +128,19 @@ class RelationAgent:
         return chain.invoke({"source": source_text, "target": target_text})
 
     def build_document_relations(self, document_id: str) -> dict:
-        chunks = self._store.list_chunks(document_id)
+        chunks = self._graph_store.list_chunks(document_id)
         if not chunks:
             return {"document_id": document_id, "entities": 0, "entity_relations": 0, "chunk_relations": 0}
 
         documents = self._chunks_to_documents(chunks)
 
         nodes, relationships, chunk_entities = self._extract_entities(documents)
-        self._store.add_entities(nodes, relationships)
-        self._store.link_chunks_to_entities(chunk_entities)
+        self._graph_store.add_entities(nodes, relationships)
+        self._graph_store.link_chunks_to_entities(chunk_entities)
 
         chunk_by_id = {c.chunk_id: c for c in chunks}
         relations = self._build_chunk_relations(chunks, chunk_by_id)
-        self._store.add_chunk_relations(relations)
+        self._graph_store.add_chunk_relations(relations)
 
         return {
             "document_id": document_id,
@@ -155,7 +157,7 @@ class RelationAgent:
         seen_pairs: set[frozenset] = set()
 
         for chunk in chunks:
-            candidates = self._store.similarity_search_with_score(
+            candidates = self._vector_store.similarity_search_with_score(
                 chunk.text,
                 k=k + 1,
                 filter={"document_id": chunk.document_id},

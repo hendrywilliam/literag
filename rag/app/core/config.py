@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     chunk_size: int = 1000
     chunk_overlap: int = 200
     default_top_k: int = 4
+    min_score: float = 0.65
 
     relation_enabled: bool = True
     relation_candidates: int = 5

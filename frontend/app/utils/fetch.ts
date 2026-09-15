@@ -6,19 +6,26 @@ export function fetchData(
   init?: RequestInit,
 ): Promise<Response> {
   const controller = new AbortController();
-  let timer: ReturnType<typeof setTimeout>;
+  const callerSignal = init?.signal;
+  const forwardAbort = () => controller.abort();
+
+  callerSignal?.addEventListener('abort', forwardAbort, { once: true });
+
+  let timer: ReturnType<typeof setTimeout> | null = null;
 
   const timeoutPromise = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => {
-      controller.abort();
-      reject(new Error(`Request timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
+    if (timeoutMs > 0) {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(new Error(`Request timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    }
   });
 
-  return Promise.race([
-    fetch(url, { ...init, signal: controller.signal }),
-    timeoutPromise,
-  ]).finally(() => {
-    clearTimeout(timer);
-  }) as Promise<Response>;
+  const request = fetch(url, { ...init, signal: controller.signal });
+
+  return Promise.race([request, timeoutPromise]).finally(() => {
+    if (timer) clearTimeout(timer);
+    callerSignal?.removeEventListener('abort', forwardAbort);
+  });
 }

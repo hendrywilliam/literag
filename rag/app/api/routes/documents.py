@@ -15,7 +15,7 @@ from app.models.schemas import (
     UploadResponse,
 )
 from app.services.document import DocumentService
-from app.services.neo4j_store import (
+from app.services.graph_store import (
     ChunkNotFoundError,
     DocumentNotFoundError,
 )

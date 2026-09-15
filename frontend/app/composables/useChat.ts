@@ -1,5 +1,7 @@
 import { ref } from 'vue'
 
+import { fetchData } from '../utils/fetch'
+
 export interface ChatSource {
   chunk_id: string
   document_id: string
@@ -67,7 +69,7 @@ export function useChat() {
     }
 
     try {
-      const response = await fetch('/api/chat/completion', {
+      const response = await fetchData('/api/chat/completion', 0, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: trimmed, top_k: topK }),

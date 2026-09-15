@@ -5,6 +5,7 @@ export default defineNuxtConfig({
   modules: ['@nuxt/ui'],
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
-    backendUrl: process.env.NUXT_BACKEND_URL || 'http://localhost:8080'
+    // overridable at runtime via NUXT_BACKEND_URL env var
+    backendUrl: 'http://localhost:8080'
   }
 })

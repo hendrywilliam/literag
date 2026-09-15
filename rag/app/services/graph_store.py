@@ -1,10 +1,8 @@
 import re
 from typing import Any
 
-from langchain_core.documents import Document
-from langchain_neo4j import Neo4jVector
-
 from app.core.config import get_settings
+from app.db.neo4j import get_neo4j_driver
 from app.models.schemas import (
     Chunk,
     DocumentDetail,
@@ -13,12 +11,7 @@ from app.models.schemas import (
     EntityRelation,
     Relation,
 )
-from app.services.embeddings import get_embeddings
-
-NODE_LABEL = "Chunk"
-TEXT_PROP = "text"
-EMBEDDING_PROP = "embedding"
-ENTITY_LABEL = "__Entity__"
+from app.services.constants import ENTITY_LABEL, NODE_LABEL, TEXT_PROP
 
 
 def sanitize_label(label: str) -> str:
@@ -34,57 +27,56 @@ class ChunkNotFoundError(Exception):
     pass
 
 
-class Neo4jVectorStore:
+class GraphStore:
+    """Document, chunk, entity, and relation operations on the Neo4j graph."""
+
     def __init__(self) -> None:
         self._settings = get_settings()
-        self._embeddings = get_embeddings()
-        self._store: Neo4jVector | None = None
+        self._constraints_ready = False
 
-    def _connection_kwargs(self) -> dict:
-        return {
-            "url": self._settings.neo4j_uri,
-            "username": self._settings.neo4j_username,
-            "password": self._settings.neo4j_password,
-            "database": self._settings.neo4j_database,
-        }
+    @property
+    def _driver(self):
+        return get_neo4j_driver()
 
-    def _store_or_create(self) -> Neo4jVector:
-        if self._store is not None:
-            return self._store
+    def _query(self, query: str, params: dict | None = None) -> list[dict[str, Any]]:
+        records, _, _ = self._driver.execute_query(
+            query,
+            database_=self._settings.neo4j_database,
+            parameters_=params or {},
+        )
+        return [r.data() for r in records]
 
-        try:
-            self._store = Neo4jVector.from_existing_index(
-                self._embeddings,
-                index_name=self._settings.neo4j_index_name,
-                **self._connection_kwargs(),
-            )
-        except ValueError:
-            self._store = Neo4jVector(
-                self._embeddings,
-                index_name=self._settings.neo4j_index_name,
-                node_label=NODE_LABEL,
-                embedding_node_property=EMBEDDING_PROP,
-                text_node_property=TEXT_PROP,
-                **self._connection_kwargs(),
-            )
-            self._store.create_new_index()
-            self._store.query(
-                f"CREATE CONSTRAINT IF NOT EXISTS "
-                f"FOR (n:`{NODE_LABEL}`) REQUIRE n.id IS UNIQUE;"
-            )
-
-        self._store.query(
+    def _ensure_entity_constraint(self) -> None:
+        if self._constraints_ready:
+            return
+        self._query(
             f"CREATE CONSTRAINT IF NOT EXISTS "
             f"FOR (e:`{ENTITY_LABEL}`) REQUIRE e.id IS UNIQUE;"
         )
+        self._constraints_ready = True
 
-        return self._store
+    # --- documents ---
 
-    def add_documents(self, documents: list[Document], ids: list[str]) -> None:
-        self._store_or_create().add_documents(documents, ids=ids)
+    def create_document(self, document_id: str, source: str) -> None:
+        self._query(
+            """
+            MERGE (d:Document {document_id: $document_id})
+            SET d.source = $source, d.status = 'indexed'
+            """,
+            params={"document_id": document_id, "source": source},
+        )
+
+    def set_document_status(self, document_id: str, status: str) -> None:
+        self._query(
+            """
+            MERGE (d:Document {document_id: $document_id})
+            SET d.status = $status
+            """,
+            params={"document_id": document_id, "status": status},
+        )
 
     def list_documents(self) -> list[DocumentSummary]:
-        result = self._store_or_create().query(
+        result = self._query(
             f"""
             MATCH (n:{NODE_LABEL})
             WHERE n.document_id IS NOT NULL
@@ -106,7 +98,7 @@ class Neo4jVectorStore:
         ]
 
     def get_document(self, document_id: str) -> DocumentDetail:
-        result = self._store_or_create().query(
+        result = self._query(
             f"""
             MATCH (n:{NODE_LABEL} {{document_id: $document_id}})
             WITH n.document_id AS document_id, n.source AS source, count(n) AS chunk_count
@@ -126,8 +118,10 @@ class Neo4jVectorStore:
             status=row["status"],
         )
 
+    # --- chunks ---
+
     def list_chunks(self, document_id: str) -> list[Chunk]:
-        result = self._store_or_create().query(
+        result = self._query(
             f"""
             MATCH (n:{NODE_LABEL} {{document_id: $document_id}})
             RETURN n.chunk_id AS chunk_id, n.document_id AS document_id,
@@ -139,7 +133,7 @@ class Neo4jVectorStore:
         return [self._to_chunk(row) for row in result]
 
     def get_chunk(self, document_id: str, chunk_id: str) -> Chunk:
-        result = self._store_or_create().query(
+        result = self._query(
             f"""
             MATCH (n:{NODE_LABEL} {{document_id: $document_id, chunk_id: $chunk_id}})
             RETURN n.chunk_id AS chunk_id, n.document_id AS document_id,
@@ -151,43 +145,10 @@ class Neo4jVectorStore:
             raise ChunkNotFoundError(chunk_id)
         return self._to_chunk(result[0])
 
-    def similarity_search_with_score(
-        self, query: str, k: int, filter: dict | None = None
-    ) -> list[tuple[Document, float]]:
-        return self._store_or_create().similarity_search_with_score(
-            query, k=k, filter=filter
-        )
-
-    @staticmethod
-    def _to_chunk(row: Any) -> Chunk:
-        return Chunk(
-            chunk_id=row["chunk_id"],
-            document_id=row["document_id"],
-            source=row["source"],
-            text=row["text"],
-            chunk_index=row.get("chunk_index", 0),
-        )
-
-    def create_document(self, document_id: str, source: str) -> None:
-        self._store_or_create().query(
-            """
-            MERGE (d:Document {document_id: $document_id})
-            SET d.source = $source, d.status = 'indexed'
-            """,
-            params={"document_id": document_id, "source": source},
-        )
-
-    def set_document_status(self, document_id: str, status: str) -> None:
-        self._store_or_create().query(
-            """
-            MERGE (d:Document {document_id: $document_id})
-            SET d.status = $status
-            """,
-            params={"document_id": document_id, "status": status},
-        )
+    # --- chunk relations ---
 
     def list_chunk_relations(self, document_id: str) -> list[Relation]:
-        result = self._store_or_create().query(
+        result = self._query(
             f"""
             MATCH (a:{NODE_LABEL} {{document_id: $document_id}})
                   -[r:RELATED]->(b:{NODE_LABEL} {{document_id: $document_id}})
@@ -208,7 +169,7 @@ class Neo4jVectorStore:
 
     def add_chunk_relations(self, relations: list[Relation]) -> None:
         data = [r.model_dump() for r in relations]
-        self._store_or_create().query(
+        self._query(
             f"""
             UNWIND $data AS row
             MATCH (a:{NODE_LABEL} {{chunk_id: row.source_chunk_id}})
@@ -219,27 +180,12 @@ class Neo4jVectorStore:
             params={"data": data},
         )
 
-    def link_chunks_to_entities(self, chunk_entities: dict[str, list[str]]) -> None:
-        data = [
-            {"chunk_id": chunk_id, "entity_id": entity_id}
-            for chunk_id, entity_ids in chunk_entities.items()
-            for entity_id in entity_ids
-        ]
-        if not data:
-            return
-        self._store_or_create().query(
-            f"""
-            UNWIND $data AS row
-            MATCH (c:{NODE_LABEL} {{chunk_id: row.chunk_id}})
-            MATCH (e:`{ENTITY_LABEL}` {{id: row.entity_id}})
-            MERGE (c)-[:MENTIONS]->(e)
-            """,
-            params={"data": data},
-        )
+    # --- entities ---
 
     def add_entities(self, nodes: list[dict], relationships: list[dict]) -> None:
+        self._ensure_entity_constraint()
         if nodes:
-            self._store_or_create().query(
+            self._query(
                 f"""
                 UNWIND $data AS row
                 MERGE (e:`{ENTITY_LABEL}` {{id: row.id}})
@@ -251,7 +197,7 @@ class Neo4jVectorStore:
                 params={"data": nodes},
             )
         if relationships:
-            self._store_or_create().query(
+            self._query(
                 """
                 UNWIND $data AS row
                 MATCH (s:`__Entity__` {id: row.source})
@@ -263,8 +209,26 @@ class Neo4jVectorStore:
                 params={"data": relationships},
             )
 
+    def link_chunks_to_entities(self, chunk_entities: dict[str, list[str]]) -> None:
+        data = [
+            {"chunk_id": chunk_id, "entity_id": entity_id}
+            for chunk_id, entity_ids in chunk_entities.items()
+            for entity_id in entity_ids
+        ]
+        if not data:
+            return
+        self._query(
+            f"""
+            UNWIND $data AS row
+            MATCH (c:{NODE_LABEL} {{chunk_id: row.chunk_id}})
+            MATCH (e:`{ENTITY_LABEL}` {{id: row.entity_id}})
+            MERGE (c)-[:MENTIONS]->(e)
+            """,
+            params={"data": data},
+        )
+
     def list_entities(self, document_id: str) -> list[Entity]:
-        result = self._store_or_create().query(
+        result = self._query(
             f"""
             MATCH (c:{NODE_LABEL} {{document_id: $document_id}})-[:MENTIONS]->(e)
             RETURN e.id AS id, labels(e) AS labels, e AS props
@@ -292,7 +256,7 @@ class Neo4jVectorStore:
         return entities
 
     def list_entity_relations(self, document_id: str) -> list[EntityRelation]:
-        result = self._store_or_create().query(
+        result = self._query(
             f"""
             MATCH (c:{NODE_LABEL} {{document_id: $document_id}})-[:MENTIONS]->(e)
             WITH collect(distinct e) AS entities
@@ -320,12 +284,22 @@ class Neo4jVectorStore:
             )
         return relations
 
+    @staticmethod
+    def _to_chunk(row: Any) -> Chunk:
+        return Chunk(
+            chunk_id=row["chunk_id"],
+            document_id=row["document_id"],
+            source=row["source"],
+            text=row["text"],
+            chunk_index=row.get("chunk_index", 0),
+        )
 
-_store: Neo4jVectorStore | None = None
+
+_graph: GraphStore | None = None
 
 
-def get_neo4j_vector_store() -> Neo4jVectorStore:
-    global _store
-    if _store is None:
-        _store = Neo4jVectorStore()
-    return _store
+def get_graph_store() -> GraphStore:
+    global _graph
+    if _graph is None:
+        _graph = GraphStore()
+    return _graph
