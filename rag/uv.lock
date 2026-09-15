@@ -1285,6 +1285,7 @@ dependencies = [
     { name = "langchain-voyageai" },
     { name = "neo4j" },
     { name = "pydantic-settings" },
+    { name = "pypdf" },
     { name = "python-multipart" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -1300,6 +1301,7 @@ requires-dist = [
     { name = "langchain-voyageai", specifier = ">=0.2.0" },
     { name = "neo4j", specifier = ">=6.0" },
     { name = "pydantic-settings", specifier = ">=2.4.0" },
+    { name = "pypdf", specifier = ">=4.0.0" },
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.0" },
 ]

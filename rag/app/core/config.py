@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     default_top_k: int = 4
     min_score: float = 0.65
 
+    max_upload_size: int = 5 * 1024 * 1024
+
     relation_enabled: bool = True
     relation_candidates: int = 5
 
