@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 
-const { messages, pending, error, send, stop, clear } = useChat()
+const { messages, pending, error, send, stop } = useChat()
 
 const input = ref('')
 const containerRef = ref<HTMLElement | null>(null)
@@ -35,23 +35,7 @@ function onReload() {
 </script>
 
 <template>
-  <div class="flex h-dvh flex-col">
-    <header class="flex items-center justify-between border-b border-(--ui-border) px-4 py-3">
-      <div class="flex items-center gap-2">
-        <UIcon name="i-lucide-bot" class="size-5 text-(--ui-primary)" />
-        <h1 class="text-sm font-semibold">Literag Assistant</h1>
-      </div>
-      <UButton
-        v-if="messages.length"
-        icon="i-lucide-trash-2"
-        size="sm"
-        color="neutral"
-        variant="ghost"
-        aria-label="Clear conversation"
-        @click="clear"
-      />
-    </header>
-
+  <div class="flex h-full flex-col">
     <main
       ref="containerRef"
       class="flex-1 overflow-y-auto"

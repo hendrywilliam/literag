@@ -13,6 +13,10 @@ type Config struct {
 	OpenRouterAPIKey string
 	OpenRouterModel  string
 	DatabaseURL      string
+	Neo4jURI         string
+	Neo4jUsername    string
+	Neo4jPassword    string
+	Neo4jDatabase    string
 }
 
 func Load() Config {
@@ -25,6 +29,10 @@ func Load() Config {
 		OpenRouterAPIKey: os.Getenv("OPENROUTER_API_KEY"),
 		OpenRouterModel:  getenv("OPENROUTER_MODEL", "deepseek/deepseek-v4-flash-latest"),
 		DatabaseURL:      getenv("DATABASE_URL", ""),
+		Neo4jURI:         getenv("NEO4J_URI", "bolt://localhost:7687"),
+		Neo4jUsername:    getenv("NEO4J_USERNAME", "neo4j"),
+		Neo4jPassword:    getenv("NEO4J_PASSWORD", ""),
+		Neo4jDatabase:    getenv("NEO4J_DATABASE", "neo4j"),
 	}
 }
 

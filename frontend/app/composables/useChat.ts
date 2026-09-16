@@ -17,12 +17,12 @@ export interface ChatMessage {
   sources?: ChatSource[]
 }
 
-export function useChat() {
-  const messages = ref<ChatMessage[]>([])
-  const pending = ref(false)
-  const error = ref<string | null>(null)
-  const controller = ref<AbortController | null>(null)
+const messages = ref<ChatMessage[]>([])
+const pending = ref(false)
+const error = ref<string | null>(null)
+const controller = ref<AbortController | null>(null)
 
+export function useChat() {
   function pushMessage(role: ChatMessage['role'], content: string): ChatMessage {
     const message: ChatMessage = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
