@@ -13,12 +13,12 @@ import (
 )
 
 type ChatUsecase struct {
-	rag  *rag.Client
+	rag  rag.Querier
 	llm  *llm.Client
 	repo chat.Repo
 }
 
-func NewChatUsecase(rag *rag.Client, llm *llm.Client, repo chat.Repo) *ChatUsecase {
+func NewChatUsecase(rag rag.Querier, llm *llm.Client, repo chat.Repo) *ChatUsecase {
 	return &ChatUsecase{rag: rag, llm: llm, repo: repo}
 }
 

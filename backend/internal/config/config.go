@@ -2,6 +2,8 @@ package config
 
 import (
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -17,6 +19,9 @@ type Config struct {
 	Neo4jUsername    string
 	Neo4jPassword    string
 	Neo4jDatabase    string
+	RedisURL         string
+	CacheEnabled     bool
+	CacheTTL         time.Duration
 }
 
 func Load() Config {
@@ -33,6 +38,9 @@ func Load() Config {
 		Neo4jUsername:    getenv("NEO4J_USERNAME", "neo4j"),
 		Neo4jPassword:    getenv("NEO4J_PASSWORD", ""),
 		Neo4jDatabase:    getenv("NEO4J_DATABASE", "neo4j"),
+		RedisURL:         getenv("REDIS_URL", ""),
+		CacheEnabled:     getenvBool("CACHE_ENABLED", false),
+		CacheTTL:         getenvDuration("CACHE_TTL", 30*time.Second),
 	}
 }
 
@@ -41,4 +49,32 @@ func getenv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func getenvBool(key string, fallback bool) bool {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+
+	parsed, err := strconv.ParseBool(v)
+	if err != nil {
+		return fallback
+	}
+
+	return parsed
+}
+
+func getenvDuration(key string, fallback time.Duration) time.Duration {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+
+	parsed, err := time.ParseDuration(v)
+	if err != nil {
+		return fallback
+	}
+
+	return parsed
 }

@@ -6,8 +6,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"literag-backend/internal/cache"
 	"literag-backend/internal/config"
 	"literag-backend/internal/db/neo4j"
+	redisdb "literag-backend/internal/db/redis"
 	"literag-backend/internal/handler"
 	"literag-backend/internal/logger"
 	"literag-backend/internal/middleware"
@@ -29,9 +31,27 @@ func main() {
 		logg.Fatal().Err(err).Msg("init chat repo")
 	}
 
-	ragClient := rag.NewClient(cfg.RAGURL)
+	// One Redis client is shared by every cached repo. A cache that cannot be
+	// reached only disables caching: it must never stop reads from working.
+	var appCache cache.Cache
+	if cfg.CacheEnabled {
+		// Can swap between drivers
+		redisClient, err := redisdb.NewClient(cfg.RedisURL)
+		if err != nil {
+			logg.Warn().Err(err).Msg("cache disabled: redis unavailable")
+		} else {
+			defer redisClient.Close()
+			appCache = cache.NewRedis(redisClient, "literag:cache:")
+		}
+	}
+
+	var ragQuerier rag.Querier = rag.NewClient(cfg.RAGURL)
+	if appCache != nil {
+		ragQuerier = rag.NewCachedClient(ragQuerier, appCache, cfg.CacheTTL)
+	}
+
 	llmClient := llm.NewClient(cfg.OpenRouterURL, cfg.OpenRouterAPIKey, cfg.OpenRouterModel)
-	chatUsecase := usecase.NewChatUsecase(ragClient, llmClient, chatRepo)
+	chatUsecase := usecase.NewChatUsecase(ragQuerier, llmClient, chatRepo)
 	chatHandler := handler.NewChatHandler(chatUsecase)
 
 	neo4jDriver, err := neo4j.NewDriver(cfg.Neo4jURI, cfg.Neo4jUsername, cfg.Neo4jPassword)
@@ -46,6 +66,10 @@ func main() {
 	}
 
 	docRepo := document.NewRepo(neo4jDriver, cfg.Neo4jDatabase)
+	if appCache != nil {
+		docRepo = document.NewCachedRepo(docRepo, appCache, cfg.CacheTTL)
+	}
+
 	docUsecase := usecase.NewDocumentUsecase(docRepo)
 	docHandler := handler.NewDocumentHandler(docUsecase)
 

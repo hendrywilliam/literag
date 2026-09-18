@@ -11,6 +11,13 @@ import (
 	"literag-backend/internal/entity"
 )
 
+// Querier is the read contract of the RAG service. It lives next to the
+// implementation so the cache decorator can wrap it without callers depending
+// on a concrete client.
+type Querier interface {
+	Query(ctx context.Context, question string, topK *int) (*entity.QueryResponse, error)
+}
+
 type Client struct {
 	baseURL string
 	http    *http.Client
